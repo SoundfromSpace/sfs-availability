@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sound from Space Room Availability</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column; a header, a legend, "next open days", then one month grid per month (Mon–Sun). */
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --ink: #141a2b;
+  --muted: #5b6480;
+  --line: #dde1ec;
+  --navy: #1f3a7a;
+  --navy-soft: #e6ebf6;
+  --crimson: #b0172f;
+  --hold-bg: #fbe9ec;
+  --open: #ffffff;
+  --past: #eef0f5;
+  --font: Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1220; --surface: #161c2e; --ink: #e9ecf5; --muted: #9aa3bd; --line: #2a3350;
+    --navy: #6f93e6; --navy-soft: #1d2847; --crimson: #f0566c; --hold-bg: #3a1820;
+    --open: #161c2e; --past: #11162a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1220; --surface: #161c2e; --ink: #e9ecf5; --muted: #9aa3bd; --line: #2a3350;
+  --navy: #6f93e6; --navy-soft: #1d2847; --crimson: #f0566c; --hold-bg: #3a1820;
+  --open: #161c2e; --past: #11162a; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--font); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+header { display: grid; gap: 6px; }
+.brand { font: 500 12px/1 var(--font); letter-spacing: .14em; text-transform: uppercase; color: var(--crimson); }
+h1 { margin: 0; font: 900 clamp(28px, 6vw, 40px)/1.1 var(--font); color: var(--navy); text-wrap: balance; letter-spacing: -.01em; }
+.sub { margin: 0; color: var(--muted); max-width: 62ch; }
+.updated { font: 400 12px/1.4 var(--mono); color: var(--muted); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; font-size: 14px; }
+.key { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--line); flex: none; }
+.sw.open { background: var(--open); }
+.sw.booked { background: var(--navy); border-color: var(--navy); }
+.sw.hold { background: repeating-linear-gradient(135deg, var(--hold-bg) 0 4px, transparent 4px 8px), var(--surface); border-color: var(--crimson); }
+.sw.part { background: linear-gradient(90deg, var(--open) 0 50%, var(--navy) 50% 100%); }
+
+.next { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; }
+.next h2 { margin: 0; font: 700 13px/1 var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 14px/1 var(--font); padding: 8px 12px; border-radius: 999px; background: var(--navy-soft); color: var(--navy); }
+
+section.month { display: grid; gap: 10px; }
+section.month h2 { margin: 0; font: 700 22px/1.2 var(--font); color: var(--navy); }
+.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.dow { font: 500 11px/1 var(--font); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: center; padding-bottom: 4px; }
+.day { position: relative; min-height: 96px; border-radius: 8px; border: 1px solid var(--line); background: var(--open);
+  padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.day:focus-visible { outline: 3px solid var(--crimson); outline-offset: 2px; }
+.day.blank { visibility: hidden; }
+.day.past { background: var(--past); color: var(--muted); cursor: default; }
+.day.past .num { opacity: .6; }
+.num { font: 700 15px/1 var(--font); font-variant-numeric: tabular-nums; }
+.day.today .num::after { content: "Today"; margin-left: 6px; font: 500 10px/1 var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--crimson); }
+.day.full { background: var(--navy); border-color: var(--navy); color: #fff; }
+:root[data-theme="dark"] .day.full, .day.full { color: var(--bg); }
+.day.fullhold { background: repeating-linear-gradient(135deg, var(--hold-bg) 0 6px, transparent 6px 12px), var(--surface); border-color: var(--crimson); }
+.status { font: 500 12px/1.2 var(--font); }
+.day.full .status { opacity: .9; }
+.day.fullhold .status { color: var(--crimson); }
+.times { display: grid; gap: 3px; font: 400 11.5px/1.25 var(--mono); }
+.times .b { color: var(--navy); }
+.times .h { color: var(--crimson); }
+.strip { margin-top: auto; height: 6px; border-radius: 3px; background: var(--navy-soft); position: relative; overflow: hidden; }
+.strip i { position: absolute; top: 0; bottom: 0; }
+.strip i.b { background: var(--navy); }
+.strip i.h { background: repeating-linear-gradient(135deg, var(--crimson) 0 2px, transparent 2px 4px); }
+.openlbl { font: 500 12px/1.2 var(--font); color: var(--muted); }
+
+.detail { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; }
+.detail h3 { margin: 0; font: 700 16px/1.3 var(--font); color: var(--navy); }
+.detail p { margin: 0; }
+.detail .mono { font-family: var(--mono); font-size: 13.5px; }
+
+footer { color: var(--muted); font-size: 13.5px; display: grid; gap: 6px; max-width: 70ch; }
+footer p { margin: 0; }
+footer strong { color: var(--ink); font-weight: 500; }
+
+@media (max-width: 640px) {
+  .day { min-height: 58px; padding: 6px; gap: 4px; }
+  .times, .day .status, .openlbl { display: none; }
+  .num { font-size: 14px; }
+  .day.today .num::after { content: "•"; margin-left: 3px; font-size: 14px; }
+  .grid { gap: 4px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div class="brand">Sound from Space · New Orleans</div>
+    <h1>Room availability</h1>
+    <p class="sub">When the studio room is open, booked, or on hold. Times are Central. Tap a day to see its booked hours.</p>
+    <div class="updated" id="updated"></div>
+  </header>
+
+  <div class="legend" aria-label="Legend">
+    <span class="key"><span class="sw open"></span>Open</span>
+    <span class="key"><span class="sw part"></span>Partly booked</span>
+    <span class="key"><span class="sw booked"></span>Booked all day</span>
+    <span class="key"><span class="sw hold"></span>On hold (may open up)</span>
+  </div>
+
+  <div class="next">
+    <h2>Next fully open days</h2>
+    <div class="chips" id="nextOpen"></div>
+  </div>
+
+  <div class="detail" id="detail" aria-live="polite">
+    <h3 id="dTitle">Pick a day</h3>
+    <p id="dBody">Tap any date to see which hours are taken.</p>
+  </div>
+
+  <div id="months" style="display:grid;gap:32px"></div>
+
+  <footer>
+    <p><strong>To book:</strong> email soundfromspacenola@gmail.com with the date and the hours you need.</p>
+    <p>Days shown as on hold are pencilled in for someone and may still open up, so ask if one of them suits you.</p>
+  </footer>
+</div>
+
+<script>
+/* ===== DATA: replace this block on each refresh. Room status only, no names. =====
+   Each day: list of [start, end, kind]; kind "b" = booked, "h" = on hold.
+   Use "all" in place of start/end for a whole-day booking or hold. */
+const DATA = {
+  updated: "2026-10-28T07:55:00-05:00",
+  from: "2026-10-28",
+  to: "2027-01-31",
+  days: {
+    "2026-10-28": [["09:00","17:00","b"]],
+    "2026-10-29": [["10:00","16:00","b"],["19:00","23:00","b"]],
+    "2026-10-30": [["10:00","16:00","b"]],
+    "2026-11-02": [["all","all","h"]],
+    "2026-11-03": [["all","all","h"]],
+    "2026-11-04": [["all","all","h"]],
+    "2026-11-05": [["all","all","h"]],
+    "2026-11-06": [["all","all","h"]],
+    "2026-11-07": [["10:00","18:00","b"]],
+    "2026-11-10": [["12:00","18:00","b"]],
+    "2026-11-11": [["12:00","18:00","b"]],
+    "2026-11-13": [["all","all","b"]],
+    "2026-11-14": [["all","all","b"]],
+    "2026-11-15": [["all","all","b"]],
+    "2026-11-17": [["12:00","18:00","b"]],
+    "2026-11-18": [["12:00","18:00","b"]],
+    "2026-11-23": [["10:00","16:00","h"]],
+    "2026-11-24": [["10:00","16:00","h"]],
+    "2026-11-25": [["10:00","16:00","h"]]
+  }
+};
+/* ===== END DATA ===== */
+
+const DAY_START = 9, DAY_END = 24; // strip covers 9am to midnight
+const pad = n => String(n).padStart(2, "0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const fmtT = t => { let [h,m] = t.split(":").map(Number); const ap = h >= 12 && h < 24 ? "p" : "a"; h = h % 12 || 12; return m ? `${h}:${pad(m)}${ap}` : `${h}${ap}`; };
+const hrs = t => { const [h,m] = t.split(":").map(Number); return h + m/60; };
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const LONGDOW = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+// "Today" in Central time, so the page is right wherever it's opened.
+const todayISO = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+
+function classify(slots) {
+  if (!slots || !slots.length) return "open";
+  const all = slots.find(s => s[0] === "all");
+  if (all) return all[2] === "b" ? "full" : "fullhold";
+  return "part";
+}
+
+function describe(dateStr) {
+  const d = parse(dateStr), slots = DATA.days[dateStr] || [];
+  const title = `${LONGDOW[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  const k = classify(slots);
+  if (k === "open") return [title, "Open all day."];
+  if (k === "full") return [title, "Booked all day."];
+  if (k === "fullhold") return [title, "On hold all day. It may still open up, so ask."];
+  const lines = slots.map(s => `${fmtT(s[0])}–${fmtT(s[1])} ${s[2] === "b" ? "booked" : "on hold"}`);
+  return [title, "Taken: " + lines.join(", ") + ". Other hours are open."];
+}
+
+function showDetail(dateStr) {
+  const [t, b] = describe(dateStr);
+  document.getElementById("dTitle").textContent = t;
+  const body = document.getElementById("dBody");
+  body.textContent = b;
+  body.className = classify(DATA.days[dateStr]) === "part" ? "mono" : "";
+}
+
+function render() {
+  const up = new Date(DATA.updated);
+  document.getElementById("updated").textContent = "Updated " + up.toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) + " CT · showing through " + parse(DATA.to).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  // Next fully open days (from today)
+  const next = [];
+  for (let d = parse(todayISO > DATA.from ? todayISO : DATA.from); iso(d) <= DATA.to && next.length < 6; d.setDate(d.getDate()+1)) {
+    if (classify(DATA.days[iso(d)]) === "open") next.push(new Date(d));
+  }
+  document.getElementById("nextOpen").innerHTML = next.map(d => `<span class="chip">${DOW[(d.getDay()+6)%7]} ${MONTHS[d.getMonth()].slice(0,3)} ${d.getDate()}</span>`).join("") || `<span class="openlbl">No fully open days in this range.</span>`;
+
+  const box = document.getElementById("months");
+  const start = parse(DATA.from), end = parse(DATA.to);
+  for (let m = new Date(start.getFullYear(), start.getMonth(), 1); m <= end; m = new Date(m.getFullYear(), m.getMonth()+1, 1)) {
+    const sec = document.createElement("section"); sec.className = "month";
+    sec.innerHTML = `<h2>${MONTHS[m.getMonth()]} ${m.getFullYear()}</h2>`;
+    const grid = document.createElement("div"); grid.className = "grid";
+    grid.innerHTML = DOW.map(d => `<div class="dow">${d}</div>`).join("");
+    const lead = (m.getDay() + 6) % 7;
+    for (let i = 0; i < lead; i++) grid.insertAdjacentHTML("beforeend", `<div class="day blank" aria-hidden="true"></div>`);
+    const last = new Date(m.getFullYear(), m.getMonth()+1, 0).getDate();
+    for (let n = 1; n <= last; n++) {
+      const d = new Date(m.getFullYear(), m.getMonth(), n), key = iso(d);
+      const slots = DATA.days[key] || [], k = classify(slots);
+      const past = key < todayISO || key < DATA.from || key > DATA.to;
+      const el = document.createElement(past ? "div" : "button");
+      el.className = "day" + (past ? " past" : " " + k) + (key === todayISO ? " today" : "");
+      let inner = `<span class="num">${n}</span>`;
+      if (!past) {
+        if (k === "full") inner += `<span class="status">Booked</span>`;
+        else if (k === "fullhold") inner += `<span class="status">On hold</span>`;
+        else if (k === "open") inner += `<span class="openlbl">Open</span>`;
+        else {
+          inner += `<span class="times">` + slots.map(s => `<span class="${s[2]}">${fmtT(s[0])}–${fmtT(s[1])}</span>`).join("") + `</span>`;
+          inner += `<span class="strip">` + slots.map(s => {
+            const a = Math.max(DAY_START, hrs(s[0])), b = Math.min(DAY_END, hrs(s[1]));
+            return `<i class="${s[2]}" style="left:${(a-DAY_START)/(DAY_END-DAY_START)*100}%;width:${(b-a)/(DAY_END-DAY_START)*100}%"></i>`;
+          }).join("") + `</span>`;
+        }
+        el.type = "button";
+        el.setAttribute("aria-label", describe(key).join(". "));
+        el.addEventListener("click", () => showDetail(key));
+      }
+      el.innerHTML = inner;
+      grid.appendChild(el);
+    }
+    sec.appendChild(grid);
+    box.appendChild(sec);
+  }
+  showDetail(todayISO >= DATA.from && todayISO <= DATA.to ? todayISO : DATA.from);
+}
+render();
+</script>
+
+</body>
+</html>

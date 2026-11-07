@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="900">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SFS Room">
+<title>SFS Room</title>
+<style>
+/* Studio room display for wall iPads. Room status only: no names, notes or money.
+   Plain CSS + ES5 so it runs on old iPads (iOS 9+). Data comes from ../data.js (rebuilt each morning). */
+html,body{margin:0;padding:0}
+*{-webkit-box-sizing:border-box;box-sizing:border-box}
+body{background:#F6F7F9;color:#141A26;font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:18px;line-height:1.35;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
+#page{max-width:440px;margin:0 auto;padding:20px 18px 16px}
+.kicker{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B91C3C}
+h1{font-size:32px;line-height:1.1;margin:4px 0 0;font-weight:800}
+.wx{margin-top:10px;padding-bottom:14px;border-bottom:3px solid #1F3A8A;font-size:17px;color:#5B6573;min-height:20px}
+.wx b{color:#141A26}
+.now{margin:16px 0 4px;padding:16px 18px;border-radius:12px;font-size:26px;font-weight:800}
+.now small{display:block;font-size:16px;font-weight:600;margin-top:4px;opacity:.85}
+.now.open{background:#E3F2E8;color:#1E6B3A}
+.now.b{background:#1F3A8A;color:#fff}
+.now.h{background:#FBE9EC;color:#8A1C2B}
+h2{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#5B6573;margin:18px 0 7px}
+.card{background:#fff;border:1px solid #E2E5EA;border-radius:12px;overflow:hidden}
+.row,.up{display:-webkit-box;display:-webkit-flex;display:flex}
+.row{padding:11px 14px;border-top:1px solid #E2E5EA}
+.row:first-child{border-top:0}
+.t{-webkit-flex:0 0 120px;flex:0 0 120px;width:120px;margin-right:12px;font-weight:700;font-size:17px;color:#1F3A8A;white-space:nowrap}
+.w{-webkit-flex:1;flex:1;font-weight:600}
+.row.open{background:#E3F2E8}.row.open .w{color:#1E6B3A}
+.row.h .w{color:#8A1C2B}
+.row.past{opacity:.45}
+.up{padding:7px 0;font-size:17px;border-top:1px solid #E2E5EA}
+.up:first-child{border-top:0}
+.up .d{-webkit-flex:0 0 90px;flex:0 0 90px;width:90px;margin-right:12px;font-weight:800}
+.up .x{-webkit-flex:1;flex:1}
+.up .x.open{color:#1E6B3A;font-weight:600}
+.foot{margin-top:16px;padding-top:10px;border-top:1px solid #E2E5EA;font-size:12px;color:#5B6573}
+#clock{display:none}
+@media (min-width:700px){
+ body{font-size:22px}
+ #page{max-width:none;padding:28px 36px}
+ .top{overflow:hidden}
+ #clock{display:block;float:right;text-align:right;font-size:56px;font-weight:800;line-height:1;color:#1F3A8A}
+ h1{font-size:44px}.kicker,h2{font-size:15px}.wx{font-size:21px}
+ .now{font-size:34px}.now small{font-size:20px}
+ .cols{overflow:hidden}
+ .col{float:left;width:50%}.col.l{padding-right:18px}.col.r{padding-left:18px}
+ .t{-webkit-flex-basis:150px;flex-basis:150px;width:150px;font-size:20px}
+ .up{font-size:21px}.up .d{-webkit-flex-basis:110px;flex-basis:110px;width:110px}
+}
+body.night{background:#0B0F17;color:#9AA3B2}
+body.night .card{background:#121826;border-color:#1E2636}
+body.night .row,body.night .up{border-color:#1E2636}
+body.night .wx b,body.night .t,body.night #clock{color:#9AA3B2}
+body.night .row.open,body.night .now.open{background:#122318}
+body.night .now.b{background:#1E2636;color:#9AA3B2}
+</style></head><body><div id="page">
+<div class="top"><div id="clock"></div>
+<div class="kicker">Sound from Space · Studio</div>
+<h1 id="title">&nbsp;</h1></div>
+<div class="wx" id="wx"></div>
+<div class="now open" id="now">&nbsp;</div>
+<div class="cols"><div class="col l"><h2>Today in the room</h2><div class="card" id="today"></div></div>
+<div class="col r"><h2>Next few days</h2><div id="ahead"></div></div></div>
+<div class="foot" id="foot"></div>
+</div>
+<script src="../data.js"></script>
+<script>
+(function(){
+var DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var OPEN_FROM=9, OPEN_TO=23; // hours shown as "open" around bookings
+function pad(n){return n<10?"0"+n:""+n;}
+function iso(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function hrs(t){var p=t.split(":");return +p[0]+(+p[1])/60;}
+function fmt(h){var hh=Math.floor(h),m=Math.round((h-hh)*60),ap=(hh>=12&&hh<24)?"p":"a";hh=hh%12||12;return hh+(m?":"+pad(m):"")+ap;}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+function slots(key){var s=(window.DATA&&DATA.days[key])||[];var o=[];for(var i=0;i<s.length;i++){
+  if(s[i][0]==="all")o.push({a:OPEN_FROM,b:OPEN_TO,k:s[i][2],all:true});else o.push({a:hrs(s[i][0]),b:hrs(s[i][1]),k:s[i][2]});}
+  o.sort(function(x,y){return x.a-y.a;});return o;}
+function label(k){return k==="b"?"Booked":"On hold";}
+function render(){
+  var n=new Date(),h=n.getHours()+n.getMinutes()/60,key=iso(n);
+  document.getElementById("title").innerHTML=DAYS[n.getDay()]+", "+MON[n.getMonth()]+" "+n.getDate();
+  var s=slots(key),rows="",cur=OPEN_FROM,now=null;
+  for(var i=0;i<s.length;i++){
+    if(s[i].a>cur)rows+='<div class="row open'+(s[i].a<=h?" past":"")+'"><div class="t">'+(cur===OPEN_FROM?"Until "+fmt(s[i].a):fmt(cur)+"–"+fmt(s[i].a))+'</div><div class="w">Open</div></div>';
+    rows+='<div class="row '+s[i].k+(s[i].b<=h?" past":"")+'"><div class="t">'+(s[i].all?"All day":fmt(s[i].a)+"–"+fmt(s[i].b))+'</div><div class="w">'+label(s[i].k)+'</div></div>';
+    if(h>=s[i].a&&h<s[i].b)now=s[i];
+    cur=Math.max(cur,s[i].b);
+  }
+  if(cur<OPEN_TO)rows+='<div class="row open"><div class="t">'+(s.length?"After "+fmt(cur):"All day")+'</div><div class="w">Open</div></div>';
+  document.getElementById("today").innerHTML=rows;
+  var el=document.getElementById("now");
+  if(now){el.className="now "+now.k;el.innerHTML=(now.k==="b"?"In session":"On hold")+"<small>"+(now.all?"All day":"Until "+fmt(now.b))+"</small>";}
+  else{var nx=null;for(var j=0;j<s.length;j++){if(s[j].a>h){nx=s[j];break;}}
+    el.className="now open";el.innerHTML="Room open"+"<small>"+(nx?"Next booking at "+fmt(nx.a):"Nothing else booked today")+"</small>";}
+  var up="";
+  for(var d=1;d<=6;d++){var t=new Date(n.getFullYear(),n.getMonth(),n.getDate()+d),ss=slots(iso(t)),x;
+    if(!ss.length)x='<div class="x open">Open all day</div>';
+    else{var parts=[];for(var q=0;q<ss.length;q++)parts.push((ss[q].all?"All day":fmt(ss[q].a)+"–"+fmt(ss[q].b))+" "+label(ss[q].k).toLowerCase());x='<div class="x">'+parts.join(" · ")+'</div>';}
+    up+='<div class="up"><div class="d">'+DAYS[t.getDay()].slice(0,3)+" "+t.getDate()+'</div>'+x+'</div>';}
+  document.getElementById("ahead").innerHTML=up;
+  var c=document.getElementById("clock"),hh=n.getHours();
+  c.innerHTML=((hh%12)||12)+":"+pad(n.getMinutes())+'<small style="display:block;font-size:16px;font-weight:600">'+(hh<12?"AM":"PM")+"</small>";
+  document.body.className=(hh>=22||hh<6)?"night":"";
+  var up2=window.DATA?new Date(DATA.updated):null;
+  document.getElementById("foot").innerHTML="Room times are Central. To book, email soundfromspacenola@gmail.com."+(up2?" Schedule updated "+MON[up2.getMonth()]+" "+up2.getDate()+".":" Schedule not loaded.");
+}
+function weather(){
+  try{var x=new XMLHttpRequest();x.open("GET","https://api.weather.gov/gridpoints/LIX/68,88/forecast",true);
+  x.onreadystatechange=function(){if(x.readyState!==4||x.status!==200)return;
+    var p=JSON.parse(x.responseText).properties.periods,a=p[0],b=p[1],r=a.probabilityOfPrecipitation&&a.probabilityOfPrecipitation.value;
+    document.getElementById("wx").innerHTML="<b>New Orleans: "+esc(a.shortForecast)+", "+a.temperature+"°</b> · "+esc(b.name)+" "+b.temperature+"°"+(r?" · "+r+"% rain":"");};
+  x.send();}catch(e){}
+}
+render();weather();setInterval(render,20000);setInterval(weather,1800000);
+setTimeout(function(){location.reload();},600000);
+})();
+</script></body></html>

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp /tmp/claude-0/*/scratchpad/*/recalc/new.xlsx /mnt/project-files/finance/SFS_Invoice_Client_Tracker.xlsx)",
+      "Artifact",
+      "ArtifactData"
+    ]
+  }
+}
